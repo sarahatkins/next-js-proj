@@ -11,11 +11,7 @@ import CreateEntryBtn from "./journal/CreateEntryBtn";
 export default function JournalClient() {
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [journalEntries] = api.journal.getAll.useSuspenseQuery({ id: "1234" });
-  const [entriesLoaded, setEntriesLoaded] = useState<boolean>(false);
-  useEffect(() => {
-    console.log(journalEntries);
-    setEntriesLoaded(true);
-  }, [journalEntries]);
+
   // Three rows
   return (
     <div className="flex h-screen bg-gray-50">
@@ -29,12 +25,13 @@ export default function JournalClient() {
           <CreateEntryBtn />
         </div>
         <div>
-          {entriesLoaded &&
+          {
             Array.isArray(journalEntries) &&
             journalEntries.map((e: Entry) => (
               <JournalWidget
                 key={e.id}
                 entry={e}
+                selected={selectedEntry != null && selectedEntry.id === e.id}
                 onSelectedWidget={setSelectedEntry}
               />
             ))}
