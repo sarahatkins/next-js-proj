@@ -1,0 +1,1 @@
+ALTER TABLE "practice_entry" RENAME COLUMN "information" TO "content";
