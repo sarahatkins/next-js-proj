@@ -13,7 +13,7 @@ export const createTable = pgTableCreator((name) => `practice_${name}`);
 export const entries = createTable(
   "entry",
   (d) => ({
-    id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
+    id: d.serial().primaryKey(),
     title: d.varchar({ length: 256 }),
     createdById: d
       .varchar({ length: 255 })

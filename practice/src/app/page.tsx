@@ -1,14 +1,20 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-
-import { LatestPost } from "~/app/_components/post";
+import RootLayout from "./layout";
 import { auth } from "~/server/auth";
-import { api, HydrateClient } from "~/trpc/server";
-import RegisterClient from "./_components/RegisterClient";
+import HomePage from "./_components/home";
+import { SessionProvider } from "next-auth/react";
 
 export default async function Home() {
-  // redirect("/entries");
-  
-  return <RegisterClient />
+  const session = await auth();
+  console.log("sess", session);
 
+  if (!session?.user) {
+    redirect("./register");
+  }
+
+  return (
+    <SessionProvider>
+      <HomePage />
+    </SessionProvider>
+  );
 }

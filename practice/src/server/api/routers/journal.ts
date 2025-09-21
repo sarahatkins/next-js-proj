@@ -6,27 +6,60 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+
+export const CursorSchema = z.object({
+  lastDate: z.string(),
+  lastShown: z.number(),
+});
 export type Entry = InferSelectModel<typeof entries>;
+export type Cursor = z.infer<typeof CursorSchema>;
 
 export const journalRouter = createTRPCRouter({
-  entry: publicProcedure
-    .input(z.object({ text: z.string(), another: z.number() }))
-    .query(({ input }) => {
-      return {
-        entry: `WOW ${input.text} ${input.another}`,
-      };
-    }),
-  create: publicProcedure
-    .input(z.object({ title: z.string().min(1), content: z.string().min(1) }))
+  create: protectedProcedure
+    .input(z.object({ title: z.string(), content: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.db.insert(entries).values({
-        title: input.title,
-        content: input.content,
-        createdById: "1234",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      const [newEntry] = await ctx.db
+        .insert(entries)
+        .values({
+          title: input.title,
+          content: input.content,
+          createdById: ctx.session.user.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      return newEntry;
     }),
+
+  update: protectedProcedure
+    .input(z.object({ id: z.number(), title: z.string(), content: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const [newEntry] = await ctx.db
+        .update(entries)
+        .set({
+          title: input.title,
+          content: input.content,
+          updatedAt: new Date(),
+        })
+        .where(eq(entries.id, input.id))
+        .returning();
+
+      return newEntry;
+    }),
+
+  getEntryById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const [res] = await ctx.db
+        .select()
+        .from(entries)
+        .where(eq(entries.id, input.id))
+        .limit(1);
+
+      return res;
+    }),
+
   getAll: publicProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
@@ -36,5 +69,32 @@ export const journalRouter = createTRPCRouter({
         .where(eq(entries.createdById, input.id));
 
       return res;
+    }),
+
+  getEntries: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1),
+        limit: z.number().default(50),
+        cursor: CursorSchema.optional(),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const res = await ctx.db
+        .select()
+        .from(entries)
+        .where(eq(entries.createdById, input.userId))
+        .limit(input.limit);
+      let nextCursor: Cursor | null = null;
+      if (res.length > input.limit) {
+        nextCursor = {
+          lastDate: "",
+          lastShown: res[input.limit - 1]!.id,
+        };
+      }
+      return {
+        res,
+        nextCursor,
+      };
     }),
 });
