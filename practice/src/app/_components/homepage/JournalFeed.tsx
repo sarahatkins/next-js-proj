@@ -27,6 +27,7 @@ export default function JournalFeed({ view, query }: JournalFeedProps) {
   const { data: entryData } = api.journal.getEntries.useInfiniteQuery(
     {
       userId: session?.user?.id ?? "",
+      query,
     },
     {
       enabled: !!session?.user?.id,
@@ -67,10 +68,10 @@ export default function JournalFeed({ view, query }: JournalFeedProps) {
   return (
     <div
       ref={scrollRef}
-      className="h-full w-full flex-1 items-center justify-center overflow-y-auto px-2 pt-1"
+      className="h-full w-full overflow-y-auto px-2 pt-1"
     >
       <div
-        className={`items-center justify-center ${
+        className={` ${
           view === "compact"
             ? "grid grid-cols-4 gap-4"
             : "flex w-full h-full flex-col gap-4"

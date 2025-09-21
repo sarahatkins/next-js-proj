@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { entries } from "~/server/db/schemas/journalSchema";
-import { type InferSelectModel, eq } from "drizzle-orm";
+import { type InferSelectModel, eq, sql, and, or } from "drizzle-orm";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -76,6 +76,7 @@ export const journalRouter = createTRPCRouter({
       z.object({
         userId: z.string().min(1),
         limit: z.number().default(50),
+        query: z.string(),
         cursor: CursorSchema.optional(),
       }),
     )
@@ -83,8 +84,16 @@ export const journalRouter = createTRPCRouter({
       const res = await ctx.db
         .select()
         .from(entries)
-        .where(eq(entries.createdById, input.userId))
-        .limit(input.limit);
+        .where(
+          and(
+            eq(entries.createdById, input.userId),
+            or(
+              sql`LOWER(${entries.content}) ILIKE '%' || LOWER(${input.query}) || '%'`,
+              sql`LOWER(${entries.title}) ILIKE '%' || LOWER(${input.query}) || '%'`,
+            ),
+          ),
+        );
+
       let nextCursor: Cursor | null = null;
       if (res.length > input.limit) {
         nextCursor = {
@@ -92,6 +101,7 @@ export const journalRouter = createTRPCRouter({
           lastShown: res[input.limit - 1]!.id,
         };
       }
+
       return {
         res,
         nextCursor,
